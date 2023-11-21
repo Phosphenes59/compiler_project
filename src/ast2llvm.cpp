@@ -507,17 +507,112 @@ std::vector<LLVMIR::L_def*> ast2llvmProg_first(aA_program p)
 
 std::vector<Func_local*> ast2llvmProg_second(aA_program p)
 {
-    
+    vector<Func_local*> funcs;
+    for (const auto &v: p->programElements){
+        if (v->kind != A_programFnDefKind)
+            continue;
+        funcs.push_back(ast2llvmFunc(v->u.fnDef));    
+    }
+    return funcs;
 }
 
 Func_local* ast2llvmFunc(aA_fnDef f)
 {
-    
+    FuncType functype;
+    string name = *f->fnDecl->id;
+    if(f->fnDecl->type == nullptr){
+        functype.type = ReturnType::VOID_TYPE;
+    }
+    else if (f->fnDecl->type->type == A_nativeTypeKind){
+        functype.type = ReturnType::INT_TYPE;
+    }
+    else if (f->fnDecl->type->type == A_structTypeKind){
+        functype.type = ReturnType::STRUCT_TYPE;
+        functype.structname = *f->fnDecl->type->u.structType;
+    }
+    else{
+        assert(0);
+    }
+    vector<Temp_temp*> args;
+    for(const auto & decl: f->fnDecl->paramDecl->varDecls){
+        if(decl->kind == A_varDeclScalarKind){
+            if(decl->u.declScalar->type->type == A_structTypeKind){
+                auto def = Temp_newtemp_struct_ptr(0, *decl->u.declScalar->id);
+                def->varname = *decl->u.declScalar->id;
+                args.push_back(def);
+            }
+            else{
+                auto def = Temp_newtemp_int();
+                def->varname = *decl->u.declScalar->id;
+                args.push_back(def);
+            }
+        }
+        else if(decl->kind == A_varDeclArrayKind){
+            if(decl->u.declArray->type->type == A_structTypeKind){
+                auto def = Temp_newtemp_struct_ptr(-1, *decl->u.declArray->id);
+                def->varname = *decl->u.declArray->id;
+                args.push_back(def);
+            }
+            else{
+                auto def = Temp_newtemp_int_ptr(-1);
+                def->varname = *decl->u.declArray->id;
+                args.push_back(def);
+            }
+        }
+        else{
+            assert(0);
+        }
+    }
+    emit_irs.clear();
+    emit_irs.emplace_back(L_Label(Temp_newlabel()));
+    for(auto stmt:f->stmts){
+        ast2llvmBlock(stmt);
+    }
+
+    list<L_stm*> ir = emit_irs;
+    emit_irs.clear();
+    return new Func_local(name, functype, args, ir);
 }
 
 void ast2llvmBlock(aA_codeBlockStmt b,Temp_label *con_label,Temp_label *bre_label)
 {
-    
+    switch(b->kind){
+        case A_codeBlockStmtType::A_nullStmtKind:{
+            break;
+        }
+        case A_codeBlockStmtType::A_varDeclStmtKind:{
+            
+        }
+        case A_codeBlockStmtType::A_assignStmtKind:{
+
+        }
+        case A_codeBlockStmtType::A_callStmtKind:{
+
+        }
+        case A_codeBlockStmtType::A_ifStmtKind:{
+
+        }
+        case A_codeBlockStmtType::A_whileStmtKind:{
+
+        }
+        case A_codeBlockStmtType::A_returnStmtKind:{
+
+        }
+        case A_codeBlockStmtType::A_continueStmtKind:{
+            if(con_label == nullptr) assert(0);
+            emit_irs.emplace_back(L_Jump(con_label));
+            break;
+        }
+        case A_codeBlockStmtType::A_breakStmtKind:{
+            if(bre_label == nullptr) assert(0);
+            emit_irs.emplace_back(L_Jump(bre_label));
+            break;
+        }
+        default:{
+            assert(0);
+            break;
+        }
+    }
 }
 
 AS_operand* ast2llvmRightVal(aA_rightVal r)
@@ -577,7 +672,21 @@ AS_operand* ast2llvmExprUnit(aA_exprUnit e)
 
 LLVMIR::L_func* ast2llvmFuncBlock(Func_local *f)
 {
-    
+    list<L_block*> blocks;
+    assert(f->irs.front()->type == L_StmKind::T_LABEL);
+    list<L_stm*> ins;
+    for (auto ir : f->irs){
+        if(ir->type == L_StmKind::T_LABEL && !ins.empty()){
+            blocks.emplace_back(L_Block(ins));
+            ins.clear();
+        }
+        ins.emplace_back(ir);
+    }
+    if(!ins.empty()){
+        blocks.emplace_back(L_Block(ins));
+        ins.clear();
+    }
+    return new L_func(f->name,f->ret,f->args,blocks);
 }
 
 void ast2llvm_moveAlloca(LLVMIR::L_func *f)
