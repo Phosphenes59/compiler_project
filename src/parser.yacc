@@ -34,7 +34,6 @@ extern int  yywrap();
   A_comExpr comExpr;
   A_boolUnit boolUnit;
   A_rightVal rightVal;
-  A_rightVal rightValOpt;
   A_leftVal leftVal;
   A_assignStmt assignStmt;
   A_varDeclScalar varDeclScalar;
@@ -89,7 +88,7 @@ extern int  yywrap();
 %token <pos> STRUCT
 %token <pos> FN
 %token <pos> ARROW
-%token <pos> RET
+%token <pos> RETURN
 %token <pos> DOT
 %token <pos> CONTINUE
 %token <pos> BREAK
@@ -125,7 +124,6 @@ extern int  yywrap();
 %type <assignStmt> AssignStmt
 %type <leftVal> LeftVal
 %type <rightVal> RightVal
-%type <rightVal> RightValOpt;
 %type <boolUnit> BoolUnit
 %type <comExpr> ComExpr
 %type <boolExpr> BoolExpr
@@ -230,15 +228,15 @@ CodeBlockStmt: VarDeclStmt
 }
 ;
 
-ReturnStmt: RET RightValOpt SEMICOLON
+ReturnStmt: RETURN RightVal SEMICOLON
 {
   $$ = A_ReturnStmt($1, $2);
 }
+| RETURN SEMICOLON
+{
+  $$ = A_ReturnStmt($1, NULL);
+}
 ;
-
-RightValOpt: /* empty */
-           | RightVal
-           ;
 
 CallStmt: FnCall SEMICOLON
 {
