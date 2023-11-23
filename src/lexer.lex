@@ -64,7 +64,7 @@ extern int line, col;
 "continue"	{ yylval.pos = A_Pos(line, col); col+=yyleng; return CONTINUE; }
 "break"	{ yylval.pos = A_Pos(line, col); col+=yyleng; return BREAK; }
 "while"	{ yylval.pos = A_Pos(line, col); col+=yyleng; return WHILE; }
-[a-zA-Z]+([a-zA-Z0-9]*) 	{ 
+[a-zA-Z_]+([a-zA-Z0-9_]*) 	{ 
     int len = yyleng;
     char* new_text = (char*)malloc((len+1)*sizeof(char));
     strcpy(new_text, yytext);
