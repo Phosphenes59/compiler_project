@@ -584,7 +584,7 @@ void ast2llvmBlock(aA_codeBlockStmt b,Temp_label *con_label,Temp_label *bre_labe
             
         }
         case A_codeBlockStmtType::A_assignStmtKind:{
-
+            
         }
         case A_codeBlockStmtType::A_callStmtKind:{
 
@@ -617,7 +617,16 @@ void ast2llvmBlock(aA_codeBlockStmt b,Temp_label *con_label,Temp_label *bre_labe
 
 AS_operand* ast2llvmRightVal(aA_rightVal r)
 {
-    
+    if(r->kind == A_rightValType::A_arithExprValKind){
+        return ast2llvmArithExpr(r->u.arithExpr);
+    }else if (r->kind == A_rightValType::A_boolExprValKind)
+    {
+        return ast2llvmBoolExpr(r->u.boolExpr);
+    }
+    else{
+        assert(0);
+    }
+    return nullptr;
 }
 
 AS_operand* ast2llvmLeftVal(aA_leftVal l)
@@ -652,22 +661,133 @@ void ast2llvmComOpExpr(aA_comExpr c,Temp_label *true_label,Temp_label *false_lab
 
 AS_operand* ast2llvmArithBiOpExpr(aA_arithBiOpExpr a)
 {
-    
+    AS_operand* l=ast2llvmArithExpr(a->left);
+    AS_operand* r=ast2llvmArithExpr(a->right);
+    AS_operand* dst=AS_Operand_Temp(Temp_newtemp_int());
+    if(a->op == A_add){
+        emit_irs.push_back(L_Binop(L_binopKind::T_plus,l,r,dst));
+        return dst;
+    }
+    else if (a->op == A_sub)
+    {
+        emit_irs.push_back(L_Binop(L_binopKind::T_minus,l,r,dst));
+        return dst;
+    }
+    else if (a->op == A_mul)
+    {
+        emit_irs.push_back(L_Binop(L_binopKind::T_mul,l,r,dst));
+        return dst;
+    }
+    else if (a->op == A_div)
+    {
+        emit_irs.push_back(L_Binop(L_binopKind::T_div,l,r,dst));
+        return dst;
+    }
+    else{
+        assert(0);
+    }
+    return nullptr;
 }
 
 AS_operand* ast2llvmArithUExpr(aA_arithUExpr a)
 {
-    
+    AS_operand* expr=ast2llvmExprUnit(a->expr);
+    if (a->op == A_neg){
+        Temp_temp* temp=Temp_newtemp_int();
+        AS_operand* dst=AS_Operand_Temp(temp);
+        emit_irs.push_back(L_Binop(L_binopKind::T_minus,AS_Operand_Const(0),expr,dst));
+        return dst;
+    }
+    assert(0);
 }
 
-AS_operand* ast2llvmArithExpr(aA_arithExpr a)
-{
-    
+AS_operand* ast2llvmArithExpr(aA_arithExpr a){
+    if(a->kind == A_arithExprType::A_arithBiOpExprKind){
+        return ast2llvmArithBiOpExpr(a->u.arithBiOpExpr);
+    }
+    else if (a->kind == A_arithExprType::A_exprUnitKind)
+    {
+        return ast2llvmExprUnit(a->u.exprUnit);
+    }
+    else{
+        assert(0);
+    }
+    return nullptr;
 }
 
 AS_operand* ast2llvmExprUnit(aA_exprUnit e)
 {
-    
+    if(e->kind == A_exprUnitType::A_arithExprKind){
+        return ast2llvmArithExpr(e->u.arithExpr);
+    }else if (e->kind == A_exprUnitType::A_arithUExprKind)
+    {
+        return ast2llvmArithUExpr(e->u.arithUExpr);
+    }else if (e->kind == A_exprUnitType::A_fnCallKind)
+    {
+        vector<AS_operand*> args;
+        for(auto val : e->u.callExpr->vals){
+            args.push_back(ast2llvmRightVal(val));
+        }
+        auto dst = AS_Operand_Temp(Temp_newtemp_int());
+        emit_irs.push_back(L_Call(*e->u.callExpr->fn, dst, args));
+    }
+    else if (e->kind == A_exprUnitType::A_numExprKind)
+    {
+        return AS_Operand_Const(e->u.num);
+    }
+    else if (e->kind == A_exprUnitType::A_idExprKind)
+    {
+        AS_operand* res=AS_Operand_Temp(Temp_newtemp_int());
+        if (localVarMap.find(*e->u.id)!=localVarMap.end()){
+            AS_operand* temp=AS_Operand_Temp(localVarMap[*e->u.id]);
+            if (localVarMap[*e->u.id]->type==TempType::INT_PTR){
+                emit_irs.push_back(L_Load(res,temp));
+                return res;
+            } else if (localVarMap[*e->u.id]->type==TempType::INT_TEMP){
+                return temp;
+            }
+            else assert(0);
+        } else if (globalVarMap.find(*e->u.id)!=globalVarMap.end()){
+            if (globalVarMap[*e->u.id]->type==TempType::INT_TEMP){
+                emit_irs.push_back(L_Load(res,AS_Operand_Name(globalVarMap[*e->u.id])));
+                return res;
+            }
+            else assert(0);
+        }
+    }
+    else if (e->kind == A_exprUnitType::A_arrayExprKind)
+    {
+        AS_operand* index=ast2llvmIndexExpr(e->u.arrayExpr->idx);
+        AS_operand* base=ast2llvmLeftVal(e->u.arrayExpr->arr);
+        AS_operand* res=AS_Operand_Temp(Temp_newtemp_int());
+        AS_operand* mid=AS_Operand_Temp(Temp_newtemp_int_ptr(0));
+        emit_irs.push_back(L_Gep(mid,base,index));
+        emit_irs.push_back(L_Load(res,mid));
+        return res;
+    }
+    else if (e->kind == A_exprUnitType::A_memberExprKind)
+    {
+        AS_operand* struc=ast2llvmLeftVal(e->u.memberExpr->structId);
+        AS_operand* mid=AS_Operand_Temp(Temp_newtemp_int_ptr(0));
+        AS_operand* res=AS_Operand_Temp(Temp_newtemp_int());
+        if (struc->kind==OperandKind::NAME){
+            string structName=struc->u.NAME->structname;
+            int offset=structInfoMap[structName].memberinfos[*e->u.memberExpr->memberId].offset;
+            emit_irs.push_back(L_Gep(mid,struc,AS_Operand_Const(offset)));
+            emit_irs.push_back(L_Load(res,mid));
+            return res;
+        } else if (struc->kind==OperandKind::TEMP){
+            string structName=struc->u.TEMP->structname;
+            int offset=structInfoMap[structName].memberinfos[*e->u.memberExpr->memberId].offset;
+            emit_irs.push_back(L_Gep(mid,struc,AS_Operand_Const(offset)));
+            emit_irs.push_back(L_Load(res,mid));
+            return res;
+        }
+    }
+    else{
+        assert(0);
+    }
+    return nullptr;
 }
 
 LLVMIR::L_func* ast2llvmFuncBlock(Func_local *f)
