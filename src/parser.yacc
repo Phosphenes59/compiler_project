@@ -528,15 +528,15 @@ ExprUnit: NUM
 }
 ;
 
-MemberExpr: ID DOT ID
+MemberExpr: LeftVal DOT ID
 {
-    $$ = A_MemberExpr($1->pos, $1->id, $3->id);
+    $$ = A_MemberExpr($1->pos, $1, $3->id);
 }
 ;
 
-ArrayExpr: ID LBRACKET IndexExpr RBRACKET
+ArrayExpr: LeftVal LBRACKET IndexExpr RBRACKET
 {
-    $$ = A_ArrayExpr($1->pos, $1->id, $3);
+    $$ = A_ArrayExpr($1->pos, $1, $3);
 }
 ;
 
