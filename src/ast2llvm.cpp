@@ -549,11 +549,11 @@ Func_local* ast2llvmFunc(aA_fnDef f)
             else assert(0);
         } else if (decl->kind == A_varDeclType::A_varDeclArrayKind){
             if (decl->u.declArray->type->type == A_dataType::A_nativeTypeKind){
-                arg=Temp_newtemp_int_ptr(-1);
+                arg = Temp_newtemp_int_ptr(-1);
                 args.push_back(arg);
                 localVarMap.emplace(*decl->u.declArray->id,arg);
             } else if (decl->u.declArray->type->type == A_dataType::A_structTypeKind){
-                arg=Temp_newtemp_struct_ptr(-1,*decl->u.declArray->type->u.structType);
+                arg = Temp_newtemp_struct_ptr(-1,*decl->u.declArray->type->u.structType);
                 args.push_back(arg);
                 localVarMap.emplace(*decl->u.declArray->id,arg);
             }
@@ -682,31 +682,31 @@ void ast2llvmBlock(aA_codeBlockStmt b,Temp_label *con_label,Temp_label *bre_labe
                         dst=AS_Operand_Temp(var);
                         emit_irs.push_back(L_Alloca(dst));
                     }
-                } else if (b->u.varDeclStmt->u.varDef->kind==A_varDefType::A_varDefArrayKind){
-                    string id=*b->u.varDeclStmt->u.varDef->u.defArray->id;
-                    int len=b->u.varDeclStmt->u.varDef->u.defArray->len;
+                } else if (b->u.varDeclStmt->u.varDef->kind == A_varDefType::A_varDefArrayKind){
+                    string id = *b->u.varDeclStmt->u.varDef->u.defArray->id;
+                    int len = b->u.varDeclStmt->u.varDef->u.defArray->len;
                     vector<aA_rightVal> vals=b->u.varDeclStmt->u.varDef->u.defArray->vals;
                     Temp_temp* var;
                     AS_operand* base;
-                    if (b->u.varDeclStmt->u.varDef->u.defArray->type->type==A_dataType::A_nativeTypeKind){
-                        var=Temp_newtemp_int_ptr(len);
+                    if (b->u.varDeclStmt->u.varDef->u.defArray->type->type == A_dataType::A_nativeTypeKind){
+                        var = Temp_newtemp_int_ptr(len);
                         localVarMap.emplace(id,var);
-                        base=AS_Operand_Temp(var);
+                        base = AS_Operand_Temp(var);
                         emit_irs.push_back(L_Alloca(base));
-                        for (int i=0;i<len;i++){
-                            var=Temp_newtemp_int_ptr(0);
-                            AS_operand* target=AS_Operand_Temp(var);
+                        for (int i = 0;i<len;i++){
+                            var = Temp_newtemp_int_ptr(0);
+                            AS_operand* target = AS_Operand_Temp(var);
                             emit_irs.push_back(L_Gep(target,base,AS_Operand_Const(i)));
                             emit_irs.push_back(L_Store(ast2llvmRightVal(vals[i]),target));
                         }
-                    } else if (b->u.varDeclStmt->u.varDef->u.defArray->type->type==A_dataType::A_structTypeKind){
+                    } else if (b->u.varDeclStmt->u.varDef->u.defArray->type->type == A_dataType::A_structTypeKind){
                         var=Temp_newtemp_struct_ptr(len,*b->u.varDeclStmt->u.varDef->u.defArray->type->u.structType);
                         localVarMap.emplace(id,var);
                         base=AS_Operand_Temp(var);
                         emit_irs.push_back(L_Alloca(base));
                         for (int i=0;i<len;i++){
                             var=Temp_newtemp_struct_ptr(0,*b->u.varDeclStmt->u.varDef->u.defArray->type->u.structType);
-                            AS_operand* target=AS_Operand_Temp(var);
+                            AS_operand* target = AS_Operand_Temp(var);
                             emit_irs.push_back(L_Gep(target,base,AS_Operand_Const(i)));
                         }
                     }
@@ -1099,7 +1099,7 @@ LLVMIR::L_func* ast2llvmFuncBlock(Func_local *f)
 
 void ast2llvm_moveAlloca(LLVMIR::L_func *f)
 {
-    L_block* first=f->blocks.front();
+    L_block* first = f->blocks.front();
     list<L_stm*> new_first_instrs;
     for (L_block* block:f->blocks){
         auto iter = block->instrs.begin();
